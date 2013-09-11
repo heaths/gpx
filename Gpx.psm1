@@ -1,5 +1,75 @@
 #Requires -Version 2.0
 
+function Edit-Gpx
+{
+<#
+.Synopsis
+Opens a GPX file and saves it after any modifications made in the pipeline.
+
+.Description
+Opens a GPX file and sends the document object through the pipeline for modification. After the pipeline is
+complete, the document object is automatically saved to the same location from which it was opened.
+
+.Parameter Path
+The path to a GPX file. Wildcards are supported, but only the first resolved path will be used.
+
+.Link
+Open-Gpx
+Save-Gpx
+#>
+    [CmdletBinding(DefaultParameterSetName='Path')]
+    param
+    (
+        [Parameter(ParameterSetName='Path', Mandatory=$true, Position=0)]
+        [string] $Path
+    )
+
+    begin
+    {
+        open-gpx @PSBoundParameters | tee-object -variable 'Document'
+    }
+
+    end
+    {
+        $Document | save-gpx @PSBoundParameters
+    }
+}
+
+function Open-Gpx
+{
+<#
+.Synopsis
+Opens a GPX file.
+
+.Description
+Opens a GPX file and sends the document object through gtthe pipeline.
+
+.Parameter Path
+The GPX file to open. Wildcards are supported, but only the first path will be used.
+
+.Outputs
+System.Xml.XmlDocument
+
+.Link
+Edit-Gpx
+
+.Link
+Save-Gpx
+#>
+    [CmdletBinding(DefaultParameterSetName='Path')]
+    param
+    (
+        [Parameter(ParameterSetName='Path', Mandatory=$true, Position=0)]
+        [string] $Path
+    )
+
+    begin
+    {
+        $LiteralPath = resolve-path $Path | select-object -first 1
+        [xml] (get-content -literalpath $LiteralPath)
+    }
+}
+
 function Remove-GpxWaypoints
 {
 <#
@@ -12,7 +82,7 @@ after the end time to subtract the offset - effectively updating the track as if
 never occured (e.g. you took a break to look for a geocache along a trail).
 
 .Parameter Path
-The path to a GPX file. Wildcards are supported, but only the first resolve path will be used.
+The path to a GPX file. Wildcards are supported, but only the first resolved path will be used.
 
 .Parameter LiteralPath
 The path to a GPX file. Wildcards are not supported.
@@ -105,5 +175,46 @@ System.Xml.XmlDocument
         {
             $Document
         }
+    }
+}
+
+function Save-Gpx
+{
+<#
+.Synopsis
+Saves a GPX document object from the pipeline.
+
+.Description
+Saves a document object containing GPX data from the pipeline to the specified path.
+
+.Parameter Document
+The XML document object to save.
+
+.Parameter Path
+The path of the GPX file to save.
+
+.Inputs
+System.Xml.XmlDocument
+
+.Link
+Edit-Gpx
+
+.Link
+Open-Gpx
+#>
+    [CmdletBinding(DefaultParameterSetName='Document')]
+    param
+    (
+        [Parameter(ParameterSetName='Document', Mandatory=$true, ValueFromPipeline=$true)]
+        [xml] $Document,
+
+        [Parameter(Mandatory=$true, Position=0)]
+        [string] $Path
+    )
+
+    end
+    {
+        $LiteralPath = join-path $PWD $Path | select-object -first 1
+        $Document.Save($LiteralPath)
     }
 }

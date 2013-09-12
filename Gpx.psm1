@@ -21,16 +21,27 @@ Save-Gpx
     param
     (
         [Parameter(ParameterSetName='Path', Mandatory=$true, Position=0)]
-        [string] $Path
+        [string] $Path,
+
+        [Parameter()]
+        [ValidateSet('ASCII', 'BigEndianUnicode', 'Unicode', 'UTF32', 'UTF7', 'UTF8')]
+        [string] $Encoding = 'UTF8',
+
+        [Parameter()]
+        [switch] $Indent
     )
 
     begin
     {
+        $null = $PSBoundParameters.Remove('Encoding')
+        $null = $PSBoundParameters.Remove('Indent')
         open-gpx @PSBoundParameters | tee-object -variable 'Document'
     }
 
     end
     {
+        $PSBoundParameters.Add('Encoding', $Encoding)
+        $PSBoundParameters.Add('Indent', $Indent)
         $Document | save-gpx @PSBoundParameters
     }
 }
@@ -66,6 +77,8 @@ Save-Gpx
     begin
     {
         $LiteralPath = resolve-path $Path | select-object -first 1
+
+        write-verbose "Opening '$LiteralPath' as XML"
         [xml] (get-content -literalpath $LiteralPath)
     }
 }
@@ -138,7 +151,8 @@ System.Xml.XmlDocument
 
         if ($LiteralPath)
         {
-            $Document = get-content $LiteralPath
+            write-verbose "Opening '$LiteralPath' as XML"
+            $Document = get-content -literalpath $LiteralPath
         }
 
         $Document.gpx.trk | select-object -expand trkseg | select-object -expand trkpt | foreach-object {
@@ -209,12 +223,29 @@ Open-Gpx
         [xml] $Document,
 
         [Parameter(Mandatory=$true, Position=0)]
-        [string] $Path
+        [string] $Path,
+
+        [Parameter()]
+        [ValidateSet('ASCII', 'BigEndianUnicode', 'Unicode', 'UTF32', 'UTF7', 'UTF8')]
+        [string] $Encoding = 'UTF8',
+
+        [Parameter()]
+        [switch] $Indent
     )
 
     end
     {
+        $Settings = new-object System.Xml.XmlWriterSettings -property @{
+            Encoding = [Text.Encoding]::$Encoding;
+            Indent = $Indent;
+            CloseOutput = $true;
+        }
+
         $LiteralPath = join-path $PWD $Path | select-object -first 1
-        $Document.Save($LiteralPath)
+        $Writer = [Xml.XmlWriter]::Create($LiteralPath, $Settings)
+
+        write-verbose "Saving XML to '$LiteralPath' with encoding '$($Settings.Encoding.EncodingName)'"
+        $Document.Save($Writer)
+        $Writer.Close()
     }
 }

@@ -241,7 +241,7 @@ Open-Gpx
             CloseOutput = $true;
         }
 
-        $LiteralPath = join-path $PWD $Path | select-object -first 1
+        $LiteralPath = [IO.Path]::Combine($PWD, $Path) | select-object -first 1
         $Writer = [Xml.XmlWriter]::Create($LiteralPath, $Settings)
 
         write-verbose "Saving XML to '$LiteralPath' with encoding '$($Settings.Encoding.EncodingName)'"
